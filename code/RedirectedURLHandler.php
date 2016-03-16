@@ -41,9 +41,18 @@ class RedirectedURLHandler extends Extension {
 		// Assumes the base url has no trailing slash.
 		$SQL_base = Convert::raw2sql(rtrim($base, '/'));
 
-		$potentials = DataObject::get("RedirectedURL", "\"FromBase\" = '/" . $SQL_base . "'", "\"FromQuerystring\" ASC");
+
+		#region -- Hack | Janne | Språkhantera redirected urls
+		$potentials = RedirectedURL::get()->filter(
+			array(
+				'FromBase' => '/' . $SQL_base,
+				'Country' => Translatable::get_current_locale()
+			)
+		)->sort( 'FromQuerystring ASC' );
+		#endregion
+
 		$listPotentials = new ArrayList; 
-		foreach  ($potentials as $potential){ 
+		foreach  ($potentials as $potential){
 			$listPotentials->push($potential);
 		}
 		
@@ -52,7 +61,15 @@ class RedirectedURLHandler extends Extension {
 		for ($pos = count($baseparts) - 1; $pos >= 0; $pos--){
 			$basestr = implode('/', array_slice($baseparts, 0, $pos));
 			$basepart = Convert::raw2sql($basestr . '/*');
-			$basepots = DataObject::get("RedirectedURL", "\"FromBase\" = '/" . $basepart . "'", "\"FromQuerystring\" ASC");
+			#region -- Hack | Janne | Språkhantera redirected urls
+			$basepots = RedirectedURL::get()->filter(
+				array(
+					'FromBase' => '/' . $basepart,
+					'Country' => Translatable::get_current_locale()
+				)
+			)->sort( 'FromQuerystring ASC' );
+			#endregion
+
 			foreach ($basepots as $basepot){
                 // If the To URL ends in a wildcard /*, append the remaining request URL elements
 				if (substr($basepot->To, -2) === '/*'){					

@@ -2,6 +2,8 @@
 /**
  * Specifies one URL redirection
  *
+ * This file has been hacked to enable for domain/language-specific redirects.
+ *
  * @package redirectedurls
  * @author sam@silverstripe.com
  * @author scienceninjas@silverstripe.com
@@ -14,6 +16,9 @@ class RedirectedURL extends DataObject implements PermissionProvider {
 		'FromBase' => 'Varchar(255)',
 		'FromQuerystring' => 'Varchar(255)',
 		'To' => 'Varchar(255)',
+		#region -- Hack | Janne | Språkhantera redirected urls
+		'Country' => 'Varchar(255)'
+		#endregion
 	);
 
 	private static $indexes = array(
@@ -27,6 +32,7 @@ class RedirectedURL extends DataObject implements PermissionProvider {
 		'FromBase' => 'From URL base',
 		'FromQuerystring' => 'From URL query parameters',
 		'To' => 'To URL',
+		'Domain' => 'Domain'
 	);
 
 	private static $searchable_fields = array(
@@ -47,8 +53,31 @@ class RedirectedURL extends DataObject implements PermissionProvider {
 		$toField = $fields->fieldByName('Root.Main.To');
 		$toField->setDescription('e.g. /about?something=5');
 
+		$countries = Translatable::get_allowed_locales();
+		foreach( $countries as $country )
+			$dropdownData[ $country ] = Locale::getDisplayRegion( $country );
+
+		#region -- Hack | Janne | Språkhantera redirected urls
+		$dropdownField = DropdownField::create(
+			'Country',
+			'Country',
+			$dropdownData
+		)->setEmptyString( 'None set' );
+		$fields->addFieldToTab( 'Root.Main', $dropdownField );
+		#endregion
+
 		return $fields;
 	}
+
+	#region -- Hack | Janne | Språkhantera redirected urls
+	public function getDomain() {
+
+		if( $this->Country )
+	    	return Locale::getDisplayRegion( $this->Country );
+		return 'None set';
+
+	}
+	#endregion
 
 	public function setFrom($val) {
 		if(strpos($val,'?') !== false) {
@@ -71,18 +100,18 @@ class RedirectedURL extends DataObject implements PermissionProvider {
 		if($val[0] != '/') $val = "/$val";
 		if($val != '/') $val = rtrim($val,'/');
 		$val = rtrim($val,'?');
-		$this->setField('FromBase', strtolower($val));
+		$this->setField('FromBase', $val);
 	}
 
 	public function setFromQuerystring($val) {
 		$val = rtrim($val,'?');
-		$this->setField('FromQuerystring', strtolower($val));
+		$this->setField('FromQuerystring', $val);
 	}
 	
 	public function setTo($val) {
 		$val = rtrim($val,'?');
 		if($val != '/') $val = rtrim($val,'/');
-		$this->setField('To', strtolower($val));
+		$this->setField('To', $val);
 	}
 
 
@@ -97,7 +126,7 @@ class RedirectedURL extends DataObject implements PermissionProvider {
 		$from = rtrim($from,'?');
 
 		if(strpos($from,'?') !== false) {
-			list($base, $querystring) = explode('?', strtolower($from), 2);
+			list($base, $querystring) = explode('?', $from, 2);
 
 		} else {
 			$base = $from;
