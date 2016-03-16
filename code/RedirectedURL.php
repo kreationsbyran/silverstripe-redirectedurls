@@ -16,9 +16,7 @@ class RedirectedURL extends DataObject implements PermissionProvider {
 		'FromBase' => 'Varchar(255)',
 		'FromQuerystring' => 'Varchar(255)',
 		'To' => 'Varchar(255)',
-		#region -- Hack | Janne | Språkhantera redirected urls
 		'Country' => 'Varchar(255)'
-		#endregion
 	);
 
 	private static $indexes = array(
@@ -57,19 +55,16 @@ class RedirectedURL extends DataObject implements PermissionProvider {
 		foreach( $countries as $country )
 			$dropdownData[ $country ] = Locale::getDisplayRegion( $country );
 
-		#region -- Hack | Janne | Språkhantera redirected urls
 		$dropdownField = DropdownField::create(
 			'Country',
 			'Country',
 			$dropdownData
 		)->setEmptyString( 'None set' );
 		$fields->addFieldToTab( 'Root.Main', $dropdownField );
-		#endregion
 
 		return $fields;
 	}
 
-	#region -- Hack | Janne | Språkhantera redirected urls
 	public function getDomain() {
 
 		if( $this->Country )
@@ -77,8 +72,7 @@ class RedirectedURL extends DataObject implements PermissionProvider {
 		return 'None set';
 
 	}
-	#endregion
-
+	
 	public function setFrom($val) {
 		if(strpos($val,'?') !== false) {
 			list($base, $querystring) = explode('?', $val, 2);
