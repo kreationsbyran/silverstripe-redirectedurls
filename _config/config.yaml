@@ -1,0 +1,17 @@
+---
+Name: redirectedurls
+After:
+  - 'framework/*'
+  - 'cms/*'
+---
+RequestHandler:
+  extensions:
+    - RedirectedURLHandler
+
+ContentController:
+  extensions:
+    - RedirectedURLHandler
+
+ModelAsController:
+  extensions:
+    - RedirectedURLHandler

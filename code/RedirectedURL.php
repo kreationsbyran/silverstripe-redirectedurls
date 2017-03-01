@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Specifies one URL redirection
  *
@@ -8,165 +9,231 @@
  * @author sam@silverstripe.com
  * @author scienceninjas@silverstripe.com
  */
-class RedirectedURL extends DataObject implements PermissionProvider {
+class RedirectedURL extends DataObject implements PermissionProvider
+{
 
-	private static $singular_name = 'Redirected URL';
+    private static $singular_name = 'Redirected URL';
 
-	private static $db = array(
-		'FromBase' => 'Varchar(255)',
-		'FromQuerystring' => 'Varchar(255)',
-		'To' => 'Varchar(255)',
-		'Country' => 'Varchar(255)'
-	);
+    private static $db = array(
+        'FromBase' => 'Varchar(255)',
+        'FromQuerystring' => 'Varchar(255)',
+        'To' => 'Varchar(255)',
+        'Locale' => 'Varchar(255)' //Renamed from "Country"
+    );
 
-	private static $indexes = array(
-		'From' => array(
-			'type' => 'unique',
-			'value' => '"FromBase","FromQuerystring"',
-		)
-	);
+    private static $has_one = array(
+        'Subsite' => 'Subsite'
+    );
 
-	private static $summary_fields = array(
-		'FromBase' => 'From URL base',
-		'FromQuerystring' => 'From URL query parameters',
-		'To' => 'To URL',
-		'Domain' => 'Domain'
-	);
+    private static $indexes = array(
+        'From' => array(
+            'type' => 'unique',
+            'value' => '"FromBase","FromQuerystring"',
+        )
+    );
 
-	private static $searchable_fields = array(
-		'FromBase',
-		'FromQuerystring',
-		'To',
-	);
+    private static $summary_fields = array(
+        'FromBase' => 'From URL base',
+        'FromQuerystring' => 'From URL query parameters',
+        'To' => 'To URL',
+        'Region' => 'Region',
+        'SubsiteTitle' => 'Subsite'
+    );
 
-	public function getCMSFields() {
-		$fields = parent::getCMSFields();
+    private static $searchable_fields = array(
+        'FromBase',
+        'FromQuerystring',
+        'To',
+    );
 
-		$fromBaseField = $fields->fieldByName('Root.Main.FromBase');
-		$fromBaseField->setDescription('e.g. /about-us.html');
+    public function getCMSFields()
+    {
+        $fields = parent::getCMSFields();
 
-		$fromQueryStringField = $fields->fieldByName('Root.Main.FromQuerystring');
-		$fromQueryStringField->setDescription('e.g. page=1&num=5');
+        $fromBaseField = $fields->fieldByName('Root.Main.FromBase');
+        $fromBaseField->setDescription('e.g. /about-us.html');
 
-		$toField = $fields->fieldByName('Root.Main.To');
-		$toField->setDescription('e.g. /about?something=5');
+        $fromQueryStringField = $fields->fieldByName('Root.Main.FromQuerystring');
+        $fromQueryStringField->setDescription('e.g. page=1&num=5');
 
-		$countries = Translatable::get_allowed_locales();
-		foreach( $countries as $country )
-			$dropdownData[ $country ] = Locale::getDisplayRegion( $country );
+        $toField = $fields->fieldByName('Root.Main.To');
+        $toField->setDescription('e.g. /about?something=5');
 
-		$dropdownField = DropdownField::create(
-			'Country',
-			'Country',
-			$dropdownData
-		)->setEmptyString( 'None set' );
-		$fields->addFieldToTab( 'Root.Main', $dropdownField );
+        $locales = Translatable::get_allowed_locales();
+        foreach ($locales as $locale) {
+            $dropdownData[$locale] = Locale::getDisplayRegion($locale);
+        }
 
-		return $fields;
-	}
+        $dropdownField = DropdownField::create(
+            'Locale',
+            'Region',
+            $dropdownData
+        );
+        $fields->addFieldToTab('Root.Main', $dropdownField);
 
-	public function getDomain() {
+        if (class_exists('Subsite')) {
+            $subsites = Subsite::all_sites();
+            if ($subsites->exists()) {
+                foreach ($subsites as $subsite) {
+                    $subsiteData[$subsite->ID] = $subsite->Title;
+                }
 
-		if( $this->Country )
-	    	return Locale::getDisplayRegion( $this->Country );
-		return 'None set';
+                $dropdownField = DropdownField::create(
+                    'SubsiteID',
+                    'Subsite',
+                    $subsiteData
+                );
+                $fields->addFieldToTab('Root.Main', $dropdownField);
+            }
+        }
 
-	}
-	
-	public function setFrom($val) {
-		if(strpos($val,'?') !== false) {
-			list($base, $querystring) = explode('?', $val, 2);
-		} else {
-			$base = $val;
-			$querystring = null;
-		}
-		$this->setFromBase($base);
-		$this->setFromQuerystring($querystring);
-	}
+        return $fields;
+    }
 
-	public function getFrom() {
-		$url = $this->FromBase;
-		if($this->FromQuerystring) $url .= "?" . $this->FromQuerystring;
-		return $url;
-	}
+    /*public function populateDefaults() {
+        $defaultLocales = Translatable::get_allowed_locales();
+        if(isset($defaultLocales[0])){
+            $this->Locale = $defaultLocales[0];
+        }
 
-	public function setFromBase($val) {
-		if($val[0] != '/') $val = "/$val";
-		if($val != '/') $val = rtrim($val,'/');
-		$val = rtrim($val,'?');
-		$this->setField('FromBase', $val);
-	}
+        parent::populateDefaults();
+    }*/
 
-	public function setFromQuerystring($val) {
-		$val = rtrim($val,'?');
-		$this->setField('FromQuerystring', $val);
-	}
-	
-	public function setTo($val) {
-		$val = rtrim($val,'?');
-		if($val != '/') $val = rtrim($val,'/');
-		$this->setField('To', $val);
-	}
+    public function getSubsiteTitle(){
+        if (!class_exists('Subsite')) {
+            return '';
+        }
+        return $this->Subsite() ? $this->Subsite()->Title : _t('admin.mainSiteTitle', 'Main site');
+    }
+
+    public function getRegion()
+    {
+
+        if ($this->Locale) {
+            return Locale::getDisplayRegion($this->Locale);
+        }
+        return _t('admin.noRegion', 'None set');
+
+    }
+
+    public function setFrom($val)
+    {
+        if (strpos($val, '?') !== false) {
+            list($base, $querystring) = explode('?', $val, 2);
+        } else {
+            $base = $val;
+            $querystring = null;
+        }
+        $this->setFromBase($base);
+        $this->setFromQuerystring($querystring);
+    }
+
+    public function getFrom()
+    {
+        $url = $this->FromBase;
+        if ($this->FromQuerystring) {
+            $url .= "?" . $this->FromQuerystring;
+        }
+        return $url;
+    }
+
+    public function setFromBase($val)
+    {
+        if ($val[0] != '/') {
+            $val = "/$val";
+        }
+        if ($val != '/') {
+            $val = rtrim($val, '/');
+        }
+        $val = rtrim($val, '?');
+        $this->setField('FromBase', $val);
+    }
+
+    public function setFromQuerystring($val)
+    {
+        $val = rtrim($val, '?');
+        $this->setField('FromQuerystring', $val);
+    }
+
+    public function setTo($val)
+    {
+        $val = rtrim($val, '?');
+        if ($val != '/') {
+            $val = rtrim($val, '/');
+        }
+        $this->setField('To', $val);
+    }
 
 
-	/**
-	 * Helper for bulkloader {@link: RedirectedURLAdmin.getModelImporters}
-	 *
-	 * @param string $from The From URL to search
-	 * @return DataObject {@link: RedirectedURL}
-	 */
-	public function findByFrom($from) {
-		if($from[0] != '/') $from = "/$from";
-		$from = rtrim($from,'?');
+    /**
+     * Helper for bulkloader {@link: RedirectedURLAdmin.getModelImporters}
+     *
+     * @param string $from The From URL to search
+     * @return DataObject {@link: RedirectedURL}
+     */
+    public function findByFrom($from)
+    {
+        if ($from[0] != '/') {
+            $from = "/$from";
+        }
+        $from = rtrim($from, '?');
 
-		if(strpos($from,'?') !== false) {
-			list($base, $querystring) = explode('?', $from, 2);
+        if (strpos($from, '?') !== false) {
+            list($base, $querystring) = explode('?', $from, 2);
 
-		} else {
-			$base = $from;
-			$querystring = null;
-		}
+        } else {
+            $base = $from;
+            $querystring = null;
+        }
 
-		$SQL_base = Convert::raw2sql($base);
-		$SQL_querystring = Convert::raw2sql($querystring);
+        $SQL_base = Convert::raw2sql($base);
+        $SQL_querystring = Convert::raw2sql($querystring);
 
-		if($querystring) $qsClause = "AND \"FromQuerystring\" = '$SQL_querystring'";
-		else $qsClause = "AND \"FromQuerystring\" IS NULL";
+        if ($querystring) {
+            $qsClause = "AND \"FromQuerystring\" = '$SQL_querystring'";
+        } else {
+            $qsClause = "AND \"FromQuerystring\" IS NULL";
+        }
 
- 		return DataObject::get_one("RedirectedURL", "\"FromBase\" = '$SQL_base' $qsClause");
-	}
+        return DataObject::get_one("RedirectedURL", "\"FromBase\" = '$SQL_base' $qsClause");
+    }
 
-	public function providePermissions() {
-		return array(
-			'REDIRECTEDURLS_CREATE' => array(
-				'name'     => 'Create a redirect',
-				'category' => 'Redirects'
-			),
-			'REDIRECTEDURLS_EDIT'   => array(
-				'name'     => 'Edit a redirect',
-				'category' => 'Redirects',
-			),
-			'REDIRECTEDURLS_DELETE' => array(
-				'name'     => 'Delete a redirect',
-				'category' => 'Redirects',
-			)
-		);
-	}
+    public function providePermissions()
+    {
+        return array(
+            'REDIRECTEDURLS_CREATE' => array(
+                'name' => 'Create a redirect',
+                'category' => 'Redirects'
+            ),
+            'REDIRECTEDURLS_EDIT' => array(
+                'name' => 'Edit a redirect',
+                'category' => 'Redirects',
+            ),
+            'REDIRECTEDURLS_DELETE' => array(
+                'name' => 'Delete a redirect',
+                'category' => 'Redirects',
+            )
+        );
+    }
 
-	public function canView($member = null) {
-		return true;
-	}
+    public function canView($member = null)
+    {
+        return true;
+    }
 
-	public function canCreate($member = null) {
-		return Permission::check('REDIRECTEDURLS_CREATE');
-	}
+    public function canCreate($member = null)
+    {
+        return Permission::check('REDIRECTEDURLS_CREATE');
+    }
 
-	public function canEdit($member = null) {
-		return Permission::check('REDIRECTEDURLS_EDIT');
-	}
+    public function canEdit($member = null)
+    {
+        return Permission::check('REDIRECTEDURLS_EDIT');
+    }
 
-	public function canDelete($member = null) {
-		return Permission::check('REDIRECTEDURLS_DELETE');
-	}
+    public function canDelete($member = null)
+    {
+        return Permission::check('REDIRECTEDURLS_DELETE');
+    }
 
 }

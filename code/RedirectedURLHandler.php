@@ -46,18 +46,19 @@ class RedirectedURLHandler extends Extension {
 		$potentials = RedirectedURL::get()->filter(
 			array(
 				'FromBase' => '/' . $SQL_base,
-				'Country' => Translatable::get_current_locale()
+				'Locale' => Translatable::get_current_locale(),
+                'SubsiteID' => Subsite::currentSubsiteID()
 			)
 		)->sort( 'FromQuerystring ASC' );
 		#endregion
 
-		$listPotentials = new ArrayList; 
+		$listPotentials = new ArrayList;
 		foreach  ($potentials as $potential){
 			$listPotentials->push($potential);
 		}
-		
+
 		// Find any matching FromBase elements terminating in a wildcard /*
-		$baseparts = explode('/', $base); 
+		$baseparts = explode('/', $base);
 		for ($pos = count($baseparts) - 1; $pos >= 0; $pos--){
 			$basestr = implode('/', array_slice($baseparts, 0, $pos));
 			$basepart = Convert::raw2sql($basestr . '/*');
@@ -65,27 +66,28 @@ class RedirectedURLHandler extends Extension {
 			$basepots = RedirectedURL::get()->filter(
 				array(
 					'FromBase' => '/' . $basepart,
-					'Country' => Translatable::get_current_locale()
+					'Locale' => Translatable::get_current_locale(),
+                    'SubsiteID' => Subsite::currentSubsiteID()
 				)
 			)->sort( 'FromQuerystring ASC' );
 			#endregion
 
 			foreach ($basepots as $basepot){
                 // If the To URL ends in a wildcard /*, append the remaining request URL elements
-				if (substr($basepot->To, -2) === '/*'){					
+				if (substr($basepot->To, -2) === '/*'){
 					$basepot->To = substr($basepot->To, 0, -2) . substr($base, strlen($basestr));
 				}
 				$listPotentials->push($basepot);
 			}
-		}	
-		
+		}
+
 		$matched = null;
 
 		// Then check the get vars, ignoring any additional get vars that
 		// this URL may have
 		if($listPotentials) {
 			foreach($listPotentials as $potential) {
-				$allVarsMatch = true;		
+				$allVarsMatch = true;
 
 				if($potential->FromQuerystring) {
 					$reqVars = array();
