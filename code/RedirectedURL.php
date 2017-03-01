@@ -103,7 +103,7 @@ class RedirectedURL extends DataObject implements PermissionProvider
         if (!class_exists('Subsite')) {
             return '';
         }
-        return $this->Subsite() ? $this->Subsite()->Title : _t('admin.mainSiteTitle', 'Main site');
+        return $this->Subsite() && $this->Subsite()->ID != 0 ? $this->Subsite()->Title : _t('admin.mainSiteTitle', 'Main site');
     }
 
     public function getRegion()
