@@ -30,7 +30,20 @@ class RedirectedURLAdmin extends ModelAdmin {
 		'RedirectedURL'
 	);
 
-	/**
+    public function getEditForm($id = null, $fields = null)
+    {
+        $form = parent::getEditForm($id, $fields);
+        $form
+            ->Fields()
+            ->fieldByName($this->sanitiseClassName($this->modelClass))
+            ->getConfig()
+            ->getComponentByType('GridFieldPaginator')
+            ->setItemsPerPage(500);
+
+        return $form;
+    }
+
+    /**
 	 * Overridden to add duplicate checking to the bulkloader to prevent
 	 * multiple records with the same 'FromBase' value.
 	 *
