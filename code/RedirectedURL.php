@@ -41,10 +41,46 @@ class RedirectedURL extends DataObject implements PermissionProvider
     );
 
     private static $searchable_fields = array(
-        'FromBase',
-        'FromQuerystring',
-        'To',
+        'FromBase' => array(
+            'filter' => 'PartialMatchfilter'
+        ),
+        'To' => array(
+            'filter' => 'PartialMatchfilter'
+        ),
+        'Locale' => array(
+            'field' => 'DropdownField',
+            'title' => 'Region',
+            'filter' => 'ExactMatchfilter'
+        ),
+        'SubsiteID' => array(
+            'field' => 'DropdownField',
+            'title' => 'Subsite',
+            'filter' => 'ExactMatchfilter'
+        )
     );
+
+    private static $default_sort = 'FromBase ASC';
+
+    public function scaffoldSearchFields($_params = null)
+    {
+
+        $fields = parent::scaffoldSearchFields();
+
+        $locales = Translatable::get_allowed_locales();
+        foreach ($locales as $locale) {
+            $dropdownData[$locale] = Locale::getDisplayRegion($locale);
+        }
+
+        $field = DropdownField::create('Locale', 'Locale', $dropdownData)->setEmptyString(_t('admin.choose',
+            'Choose'));
+        $fields->replaceField('Locale', $field);
+
+        $field = DropdownField::create('SubsiteID', 'Subsite',
+            Subsite::all_sites()->map())->setEmptyString(_t('admin.choose', 'Choose'));
+        $fields->replaceField('SubsiteID', $field);
+
+        return $fields;
+    }
 
     public function getCMSFields()
     {
@@ -59,6 +95,8 @@ class RedirectedURL extends DataObject implements PermissionProvider
         $toField = $fields->fieldByName('Root.Main.To');
         $toField->setDescription('e.g. /about?something=5');
 
+        //TODO: Make module independent from Translatable and Subsite modules
+
         $locales = Translatable::get_allowed_locales();
         foreach ($locales as $locale) {
             $dropdownData[$locale] = Locale::getDisplayRegion($locale);
@@ -71,20 +109,18 @@ class RedirectedURL extends DataObject implements PermissionProvider
         );
         $fields->addFieldToTab('Root.Main', $dropdownField);
 
-        if (class_exists('Subsite')) {
-            $subsites = Subsite::all_sites();
-            if ($subsites->exists()) {
-                foreach ($subsites as $subsite) {
-                    $subsiteData[$subsite->ID] = $subsite->Title;
-                }
-
-                $dropdownField = DropdownField::create(
-                    'SubsiteID',
-                    'Subsite',
-                    $subsiteData
-                );
-                $fields->addFieldToTab('Root.Main', $dropdownField);
+        $subsites = Subsite::all_sites();
+        if ($subsites->exists()) {
+            foreach ($subsites as $subsite) {
+                $subsiteData[$subsite->ID] = $subsite->Title;
             }
+
+            $dropdownField = DropdownField::create(
+                'SubsiteID',
+                'Subsite',
+                $subsiteData
+            );
+            $fields->addFieldToTab('Root.Main', $dropdownField);
         }
 
         return $fields;
@@ -99,11 +135,13 @@ class RedirectedURL extends DataObject implements PermissionProvider
         parent::populateDefaults();
     }*/
 
-    public function getSubsiteTitle(){
+    public function getSubsiteTitle()
+    {
         if (!class_exists('Subsite')) {
             return '';
         }
-        return $this->Subsite() && $this->Subsite()->ID != 0 ? $this->Subsite()->Title : _t('admin.mainSiteTitle', 'Main site');
+        return $this->Subsite() && $this->Subsite()->ID != 0 ? $this->Subsite()->Title : _t('admin.mainSiteTitle',
+            'Main site');
     }
 
     public function getRegion()
